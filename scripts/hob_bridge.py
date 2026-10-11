@@ -587,7 +587,7 @@ def _check_inventory(inventory):
     elif checkpoints is None:
         items = [(False, "Volume: checkpoints", "the worker could not list them")]
     else:
-        items = [(False, "Volume: checkpoints", "none — is the network volume mounted at /workspace, "
+        items = [(False, "Volume: checkpoints", "none — is the network volume attached to the endpoint, "
                                                 "with models/Stable-diffusion/ on it?")]
     for key, label in (("loras", "LoRAs"), ("vae", "VAEs"), ("embeddings", "embeddings"),
                        ("upscalers", "upscalers")):

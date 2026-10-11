@@ -45,7 +45,15 @@ except ImportError:  # unit tests import this module without the SDK
 
 A1111_DIR = os.environ.get("A1111_DIR", "/sd-webui")
 A1111_URL = "http://127.0.0.1:7860"
-MODEL_DIR = os.environ.get("HOB_MODEL_DIR", "/workspace/models")
+
+
+def _default_model_dir(isdir=os.path.isdir):
+    """Where the volume's models/ lives: RunPod mounts a network volume at
+    /runpod-volume in serverless workers and at /workspace in pods."""
+    return "/runpod-volume/models" if isdir("/runpod-volume") else "/workspace/models"
+
+
+MODEL_DIR = os.environ.get("HOB_MODEL_DIR") or _default_model_dir()
 STARTUP_TIMEOUT = int(os.environ.get("HOB_STARTUP_TIMEOUT", "600"))
 GENERATION_TIMEOUT = int(os.environ.get("HOB_GENERATION_TIMEOUT", "900"))
 PROGRESS_INTERVAL = float(os.environ.get("HOB_PROGRESS_INTERVAL", "1.5"))

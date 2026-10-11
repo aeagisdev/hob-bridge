@@ -101,7 +101,7 @@ docker push ghcr.io/<you>/hob-bridge-worker
 Then in RunPod → Serverless → **New Endpoint**:
 
 - Container image: `ghcr.io/<you>/hob-bridge-worker` (pin a release tag)
-- Mount your network volume at `/workspace`
+- Attach your network volume (Edit Endpoint → Advanced → Network Volumes). RunPod mounts it at `/runpod-volume` in serverless workers (`/workspace` in pods); the worker detects which, so `HOB_MODEL_DIR` is normally not needed
 - Enable **Flash Boot**
 - **Max workers: 1** — A1111 serializes generations anyway, so a second concurrent job would boot a second worker (another cold start + another model load) instead of waiting in queue. RunPod queues jobs while the worker is busy.
 - **Idle timeout**: how long a worker stays up after its last job. The default
@@ -112,7 +112,7 @@ Then in RunPod → Serverless → **New Endpoint**:
 
   | Var | Meaning |
   |---|---|
-  | `HOB_MODEL_DIR` | Model root on the volume (default `/workspace/models`) |
+  | `HOB_MODEL_DIR` | Model root on the volume (default: `/runpod-volume/models` on serverless, `/workspace/models` in pods) |
   | `HOB_PRELOAD_MODEL` | Checkpoint file name to load at boot — set your most-used one; saves a model swap on every warm request |
   | `HOB_A1111_ARGS` | Extra A1111 flags, e.g. `--xformers` |
   | `HOB_STARTUP_TIMEOUT` | Seconds to wait for A1111 at boot (default 600) |

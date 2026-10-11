@@ -619,6 +619,11 @@ def test_warm_checkpoint_states():
     assert list(hob_bridge._warm_checkpoint(""))[0].startswith("Pick")
 
 
+def test_model_dir_follows_the_runpod_mount():
+    assert hob_worker._default_model_dir(isdir=lambda path: path == "/runpod-volume") == "/runpod-volume/models"
+    assert hob_worker._default_model_dir(isdir=lambda path: False) == "/workspace/models"
+
+
 def test_worker_warm_job():
     routes = {"/sdapi/v1/options": [(200, None)], "/sdapi/v1/txt2img": [(200, {"images": []})]}
     job = {"id": "w", "input": {"type": "warm", "params": {"checkpoint": "a.safetensors"}}}

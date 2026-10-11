@@ -55,6 +55,9 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- The worker looked for models in `/workspace`, but RunPod mounts a network
+  volume at `/runpod-volume` in serverless workers: it would have seen no
+  checkpoints. It now picks the mount that exists (`HOB_MODEL_DIR` overrides).
 - Checkpoint overrides were silently ignored (an absolute path was sent).
 - ControlNet: control images from the UI were dropped; `save_detected_map`,
   `resize_mode`/`control_mode` and `enabled` were not sent in a form the
