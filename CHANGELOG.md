@@ -55,6 +55,8 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- `hob sync` uploaded 256 MB parts, which RunPod's proxy rejected with HTTP 524 on a real
+  volume. Parts are now 32 MB, 4 at a time (`HOB_PART_MB` to tune).
 - The worker looked for models in `/workspace`, but RunPod mounts a network
   volume at `/runpod-volume` in serverless workers: it would have seen no
   checkpoints. It now picks the mount that exists (`HOB_MODEL_DIR` overrides).

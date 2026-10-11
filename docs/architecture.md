@@ -29,8 +29,8 @@ New assets reach the volume through RunPod's S3-compatible Volume API — no
 helper pod needed. `tools/hob.py sync` diffs the local folder against the
 volume by relative path and size and uploads only the difference (`--dry-run`
 reports, `--only-new` never overwrites, nothing is ever deleted). It works
-around the API's documented limits: parts of 256 MB (PutObject/UploadPart
-cap at 500 MB), a 2 h read timeout for multi-GB completions, and a retry for
+around the API's limits: parts of 32 MB, 4 at a time (the documented 500 MB cap
+is not the practical one: 256 MB parts got HTTP 524 from RunPod's proxy), a 2 h read timeout for multi-GB completions, and a retry for
 the slow first listing of files written outside the S3 API. Any other S3
 client (rclone, s5cmd) works too. The worker mounts every model category A1111 knows about
 (checkpoints, LoRA, VAE, embeddings, hypernetworks, ESRGAN/SwinIR/LDSR/ScuNET

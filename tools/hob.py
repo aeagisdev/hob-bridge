@@ -14,7 +14,8 @@ Configuration (environment; secrets are never taken as arguments):
     HOB_VOLUME_ID            network volume id (the S3 bucket)
     HOB_VOLUME_DATACENTER    its datacenter, e.g. EU-RO-1 (the S3 region)
     HOB_VOLUME_KEY_ID        S3 API key access id (user_...)  — RunPod console →
-    HOB_VOLUME_SECRET        S3 API key secret (rps_...)        Settings → S3 API Keys
+    HOB_VOLUME_SECRET        S3 API key secret (rps_...)        Credentials → S3 API Keys
+    HOB_PART_MB              upload part size in MB (default 32; lower it if parts time out)
 Needs boto3 (pip install boto3).
 """
 import argparse
@@ -22,8 +23,12 @@ import os
 import sys
 import time
 
-# RunPod's S3 API caps a single PutObject / UploadPart at 500 MB
-PART_SIZE = 256 * 1024 * 1024
+# RunPod's S3 API caps a single PutObject / UploadPart at 500 MB, but its proxy answers
+# 524 to a part that takes too long to store: 256 MB parts failed on a real volume,
+# so parts are small and few at a time. ponytail: 32 MB parts cap a file at ~320 GB
+# (S3's 10,000 parts); raise HOB_PART_MB for larger files.
+PART_SIZE = int(os.environ.get("HOB_PART_MB", "32")) * 1024 * 1024
+MAX_CONCURRENCY = 4
 SKIP_SUFFIXES = (".tmp", ".part", ".crdownload")
 
 
@@ -156,7 +161,8 @@ def _client():
         config=Config(read_timeout=7200, retries={"max_attempts": 5, "mode": "standard"},
                       s3={"addressing_style": "path"}),
     )
-    return client, TransferConfig(multipart_threshold=PART_SIZE, multipart_chunksize=PART_SIZE)
+    return client, TransferConfig(multipart_threshold=PART_SIZE, multipart_chunksize=PART_SIZE,
+                                  max_concurrency=MAX_CONCURRENCY)
 
 
 def main(argv=None):
