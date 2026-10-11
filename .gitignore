@@ -7,3 +7,22 @@ venv/
 *.log
 .DS_Store
 .pytest_cache/
+.env.*
+.idea/
+.vscode/
+*.swp
+.mypy_cache/
+.ruff_cache/
+.coverage
+build/
+dist/
+.claude/
+
+# model weights and generated images never belong in the repo
+*.safetensors
+*.ckpt
+*.pt
+*.pth
+*.bin
+models/
+outputs/
