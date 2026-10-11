@@ -1,0 +1,4 @@
+# Unit tests: python3 -m pytest tests  (integration deps: see CONTRIBUTING.md)
+pytest
+requests
+pillow

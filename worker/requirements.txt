@@ -1,0 +1,5 @@
+# 1.10+ delivers per-job stop signals (cancel / timeout → A1111 interrupt);
+# pinned to the release that path was verified against
+runpod==1.12.0
+requests
+boto3  # optional S3/R2 output (HOB_S3_*)

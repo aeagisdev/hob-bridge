@@ -1,0 +1,28 @@
+# Hob Bridge serverless worker, ComfyUI backend: ComfyUI + RunPod handler.
+# Same job envelope as the A1111 worker (Dockerfile); build with:
+#   docker build -f Dockerfile.comfy -t ghcr.io/<you>/hob-bridge-worker-comfy .
+FROM pytorch/pytorch:2.14.1-cuda12.6-cudnn9-runtime
+
+# This image's Python is Ubuntu's (PEP 668 "externally managed") with torch in
+# the system site-packages; the container exists for one app, so install there.
+ENV PIP_BREAK_SYSTEM_PACKAGES=1
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git libgl1 libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Pinned release tag — bump deliberately (see CONTRIBUTING.md).
+RUN git clone --depth 1 --branch v0.39.2 https://github.com/comfyanonymous/ComfyUI.git /comfyui
+
+# torch/torchvision come with the base image; pip leaves them alone
+WORKDIR /comfyui
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY requirements.txt /handler/requirements.txt
+RUN pip install --no-cache-dir -r /handler/requirements.txt
+
+# handler.py is shared with the A1111 worker (error classes, S3 output, progress)
+COPY handler.py comfy_handler.py /handler/
+WORKDIR /handler
+
+CMD ["python", "-u", "comfy_handler.py"]

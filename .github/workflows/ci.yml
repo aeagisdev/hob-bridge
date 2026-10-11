@@ -1,0 +1,114 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # 3.10: the Python A1111 runs the extension on; 3.11: the worker image's
+        python: ["3.10", "3.11"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install -r tests/requirements.txt
+      - run: python -m pytest -q tests/test_hob_bridge.py tests/test_hob_cli.py tests/test_comfy_worker.py
+
+  # The real runpod SDK (version pinned in worker/requirements.txt): a stop
+  # signal must reach A1111 as /interrupt.
+  integration-runpod:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r worker/requirements.txt pytest
+      - run: python -m pytest -q -rs tests/integration/test_runpod_stop.py
+
+  # The real ControlNetUnit model of the commit pinned in worker/Dockerfile:
+  # the ControlNet payload must round-trip unchanged.
+  integration-controlnet:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - run: pip install "pydantic<2" numpy pillow opencv-python-headless requests pytest
+      - run: python -m pytest -q -rs tests/integration/test_controlnet_payload.py
+
+  # The ComfyUI release pinned in worker/Dockerfile.comfy, booted on CPU: graph
+  # validation, queue/history/view, catalog parsing. Real sampling needs a
+  # checkpoint (HOB_COMFY_TEST_CHECKPOINT) and is run by hand.
+  integration-comfyui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: ComfyUI at the pinned tag
+        run: |
+          tag=$(grep -oP -- '--branch \Kv[0-9.]+' worker/Dockerfile.comfy)
+          git clone --depth 1 --branch "$tag" https://github.com/comfyanonymous/ComfyUI.git "$RUNNER_TEMP/ComfyUI"
+          echo "COMFYUI_DIR=$RUNNER_TEMP/ComfyUI" >> "$GITHUB_ENV"
+      - run: pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+      - run: pip install -r "$COMFYUI_DIR/requirements.txt" requests pillow pytest
+      - run: python -m pytest -q -rs tests/integration/test_comfy_server.py
+
+  worker-image:
+    needs: [unit, integration-runpod, integration-controlnet, integration-comfyui]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: hob-bridge-worker
+            dockerfile: worker/Dockerfile
+          - image: hob-bridge-worker-comfy
+            dockerfile: worker/Dockerfile.comfy
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free disk space (CUDA base image + A1111 dependencies)
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        if: github.event_name != 'pull_request'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}
+          # vX.Y.Z tags → :X.Y.Z, :X.Y and :latest; main → :edge; every build → :sha-<short>
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=edge
+            type=sha
+      - uses: docker/build-push-action@v6
+        with:
+          context: worker
+          file: ${{ matrix.dockerfile }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
