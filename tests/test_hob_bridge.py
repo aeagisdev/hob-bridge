@@ -639,6 +639,13 @@ def test_worker_warm_job():
     assert json.loads(result["error"])["kind"] == "model missing", result
 
 
+def test_a1111_does_not_load_a_model_behind_the_workers_back():
+    started = []
+    with _patched(hob_worker, subprocess=types.SimpleNamespace(Popen=lambda args, **kw: started.append(args))):
+        hob_worker._start_a1111()
+    assert "--skip-load-model-at-start" in started[0]
+
+
 def test_similarity():
     black, white = Image.new("RGB", (8, 8), "black"), Image.new("RGB", (8, 8), "white")
     assert hob_bridge._similarity(black, black) == 100

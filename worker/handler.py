@@ -152,6 +152,11 @@ def _start_a1111():
         "python", "launch.py",
         "--api", "--listen", "--port", "7860",
         "--skip-install",
+        # A1111 otherwise loads its default checkpoint in a background thread while the API
+        # already answers, and changing the checkpoint (HOB_PRELOAD_MODEL, a job's override)
+        # races that load without any lock: on a real worker it left the model half on the CPU
+        # and every job failed with "two devices, cpu and cuda:0". Loads now happen on demand.
+        "--skip-load-model-at-start",
         "--ckpt-dir", f"{MODEL_DIR}/Stable-diffusion",
         "--vae-dir", f"{MODEL_DIR}/VAE",
         "--lora-dir", f"{MODEL_DIR}/Lora",

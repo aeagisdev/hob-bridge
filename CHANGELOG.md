@@ -55,6 +55,11 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- Every job failed on a fresh GPU worker with `Expected all tensors to be on the same device, but found at
+  least two devices, cpu and cuda:0`: A1111 loads its default checkpoint in a background thread at boot, and
+  the worker's `HOB_PRELOAD_MODEL` (or a job's checkpoint override) changed the checkpoint while that load was
+  still running, corrupting both. A1111 now starts with `--skip-load-model-at-start`. Found on a real RunPod
+  endpoint; reproduced against A1111 v1.10.1 and fixed by the flag.
 - `hob sync` uploaded 256 MB parts, which RunPod's proxy rejected with HTTP 524 on a real
   volume. Parts are now 32 MB, 4 at a time (`HOB_PART_MB` to tune).
 - The worker looked for models in `/workspace`, but RunPod mounts a network
